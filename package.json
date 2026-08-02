@@ -2,6 +2,7 @@
   "name": "flappy-world",
   "version": "1.0.0",
   "private": true,
+  "description": "Flappy Bird-style game built with Next.js and Canvas",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

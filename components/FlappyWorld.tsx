@@ -102,7 +102,10 @@ export default function FlappyWorld() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) {
+      console.error("Canvas 2D context not available");
+      return;
+    }
 
     if (gameState !== "playing" && gameState !== "dead") {
       // Draw menu or static frame
@@ -134,7 +137,10 @@ export default function FlappyWorld() {
       const canvas = canvasRef.current;
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+      if (!ctx) {
+      console.error("Canvas 2D context not available");
+      return;
+    }
       drawFrame(ctx, canvas, dimensions);
     }
   });
