@@ -3,4 +3,4 @@
 - [x] Scaffold Next.js project with package.json, configs, layout
 - [x] Build the Flappy Bird game component with canvas, physics, scoring
 - [x] Create the main page with game integration
-- [~] Push to GitHub, build, and deploy
+- [!] Push to GitHub, build, and deploy — blocked: server-managed build.yml lacks workflow_dispatch trigger

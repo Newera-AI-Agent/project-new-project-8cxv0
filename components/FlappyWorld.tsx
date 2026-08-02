@@ -103,7 +103,7 @@ export default function FlappyWorld() {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) {
-      console.error("Canvas 2D context not available");
+      console.warn("Canvas 2D context not available");
       return;
     }
 
@@ -138,7 +138,7 @@ export default function FlappyWorld() {
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
-      console.error("Canvas 2D context not available");
+      console.warn("Canvas 2D context not available");
       return;
     }
       drawFrame(ctx, canvas, dimensions);
