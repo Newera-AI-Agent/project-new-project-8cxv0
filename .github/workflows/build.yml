@@ -1,0 +1,110 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize diagnostics
+        run: : > build.log
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Bun (if bun lockfile exists)
+        if: hashFiles('bun.lock', 'bun.lockb') != ''
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          echo "$HOME/.bun/bin" >> $GITHUB_PATH
+
+      - name: Enable Corepack
+        if: hashFiles('pnpm-lock.yaml', 'yarn.lock') != ''
+        run: corepack enable 2>&1 | tee -a build.log
+
+      - name: Detect package manager
+        id: pm
+        run: |
+          if [ -f bun.lock ] || [ -f bun.lockb ]; then echo "manager=bun" >> $GITHUB_OUTPUT
+          elif [ -f pnpm-lock.yaml ]; then echo "manager=pnpm" >> $GITHUB_OUTPUT
+          elif [ -f yarn.lock ]; then echo "manager=yarn" >> $GITHUB_OUTPUT
+          else echo "manager=npm" >> $GITHUB_OUTPUT; fi
+
+      - name: Install deps (npm)
+        if: steps.pm.outputs.manager == 'npm'
+          run: (npm ci || npm install) 2>&1 | tee -a build.log
+
+      - name: Install deps (bun)
+        if: steps.pm.outputs.manager == 'bun'
+          run: (bun install --frozen-lockfile || bun install) 2>&1 | tee -a build.log
+
+      - name: Install deps (pnpm)
+        if: steps.pm.outputs.manager == 'pnpm'
+          run: (pnpm install --frozen-lockfile || pnpm install) 2>&1 | tee -a build.log
+
+      - name: Install deps (yarn)
+        if: steps.pm.outputs.manager == 'yarn'
+          run: (yarn install --immutable || yarn install --frozen-lockfile || yarn install) 2>&1 | tee -a build.log
+
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: |
+          set +e
+          if [ "${{ steps.pm.outputs.manager }}" = "bun" ]; then
+            bun run build 2>&1 | tee -a build.log
+          elif [ "${{ steps.pm.outputs.manager }}" = "pnpm" ]; then
+            pnpm run build 2>&1 | tee -a build.log
+          elif [ "${{ steps.pm.outputs.manager }}" = "yarn" ]; then
+            yarn build 2>&1 | tee -a build.log
+          else
+            npm run build 2>&1 | tee -a build.log
+          fi
+          EXIT_CODE=${PIPESTATUS[0]}
+          echo "exit_code=$EXIT_CODE" >> $GITHUB_OUTPUT
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "build_status=pass" >> $GITHUB_OUTPUT
+          else
+            echo "build_status=fail" >> $GITHUB_OUTPUT
+          fi
+          exit 0
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          retention-days: 1
+          if-no-files-found: warn
+
+      - name: Upload build output
+        if: steps.build.outputs.build_status == 'pass'
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            .next
+            dist
+            out
+            build
+            public
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Fail job if build failed
+        if: steps.build.outputs.build_status == 'fail'
+        run: |
+          echo "::error::Build failed — see build-log artifact"
+          exit 1
